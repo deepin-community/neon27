@@ -1,0 +1,21 @@
+Description: search server.key in the current directory
+ To support out of tree builds, server.key should be checked in the current
+ directory.
+Author: Laszlo Boszormenyi (GCS) <gcs@debian.org>
+Forwarded: no
+Last-Update: 2016-11-27
+
+---
+
+--- neon27-0.30.2.orig/test/socket.c
++++ neon27-0.30.2/test/socket.c
+@@ -109,7 +109,8 @@ static int init_ssl(void)
+  
+     /* take srcdir as argv[1]. */
+     if (test_argc > 1) {
+-	server_key = ne_concat(test_argv[1], "/server.key", NULL);
++//	server_key = ne_concat(test_argv[1], "/server.key", NULL);
++	server_key = ne_strdup("server.key");
+     } else {
+ 	server_key = ne_strdup("server.key");
+     }

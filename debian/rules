@@ -1,0 +1,161 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+package=libneon27
+upstream-version=$(shell head -n 1 debian/changelog | sed -e 's/.*(\(\([0-9]\+:\)\?\([^-]\+\).*\).*).*/\3/' )
+
+export KRB5_CONFIG=/usr/bin/krb5-config.mit
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+include /usr/share/dpkg/architecture.mk
+
+export PKG_CONFIG=$(shell which $(DEB_HOST_GNU_TYPE)-pkg-config)
+
+BUILDDIR=$(CURDIR)/debian/build-tree/
+DESTDIR=$(CURDIR)/debian/
+CONFIG_COMMON=  --enable-shared			\
+		--enable-static			\
+		--enable-threadsafe-ssl=posix   \
+		--with-gssapi			\
+		--with-libxml2			\
+		$(NULL)
+
+CPPFLAGS=$(shell dpkg-buildflags --get CPPFLAGS)
+CFLAGS=$(shell dpkg-buildflags --get CFLAGS)
+LDFLAGS=$(shell dpkg-buildflags --get LDFLAGS)
+
+build-autoreconf:
+	LIBTOOLIZE='libtoolize --install' dh_autoreconf \
+		./autogen.sh
+	touch build-autoreconf
+
+${BUILDDIR}/neon-openssl/config.status: build-autoreconf
+	CPPFLAGS='$(CPPFLAGS)' CFLAGS='$(CFLAGS)' LDFLAGS='$(LDFLAGS)' \
+		dh_auto_configure --builddirectory=$(BUILDDIR)/neon-openssl -- ${CONFIG_COMMON} \
+			--with-ssl=openssl
+
+${BUILDDIR}/neon-gnutls/config.status: build-autoreconf
+	CPPFLAGS='$(CPPFLAGS)' CFLAGS='$(CFLAGS)' LDFLAGS='$(LDFLAGS)' \
+		 dh_auto_configure --builddirectory=$(BUILDDIR)/neon-gnutls -- ${CONFIG_COMMON} \
+			--with-ca-bundle=/etc/ssl/certs/ca-certificates.crt \
+			--with-ssl=gnutls
+
+build-arch: build
+build-indep: build
+
+build: build-openssl build-gnutls
+build-openssl: ${BUILDDIR}/neon-openssl/config.status
+	dh_testdir
+	ln -s $(CURDIR)/doc/  $(BUILDDIR)/neon-openssl/
+	cd $(BUILDDIR)/neon-openssl/ && $(MAKE) all docs-man
+ifeq ($(filter nocheck,$(DEB_BUILD_OPTIONS)),)
+	export TEST_QUIET=0
+	cd $(BUILDDIR)/neon-openssl/ && $(MAKE) check || true
+endif
+	touch build-openssl
+
+build-gnutls: ${BUILDDIR}/neon-gnutls/config.status
+	dh_testdir
+	cd $(BUILDDIR)/neon-gnutls/ && \
+		sed -i "s/-lneon/-lneon-gnutls/g" \
+		neon-config neon.pc Makefile src/Makefile test/Makefile
+	cd $(BUILDDIR)/neon-gnutls/ && \
+		sed -i "s/libneon\./libneon-gnutls\./g" \
+		neon-config neon.pc Makefile src/Makefile test/Makefile
+	ln -s $(CURDIR)/doc/  $(BUILDDIR)/neon-gnutls/
+	cd $(BUILDDIR)/neon-gnutls/ && $(MAKE) all docs-man
+ifeq ($(filter nocheck,$(DEB_BUILD_OPTIONS)),)
+	cd $(BUILDDIR)/neon-gnutls/ && $(MAKE) check || true
+endif
+
+	touch build-gnutls
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-autoreconf build-openssl build-gnutls \
+	    install-openssl install-gnutls \
+	    macros/changelog.m4
+	rm -rf $(BUILDDIR)
+	[ ! -f Makefile ] || $(MAKE) distclean
+	rm -rf doc/man/
+	rm -rf Makefile src/Makefile test/Makefile config.h config.cache config.log config.status
+	rm -rf libtool neon-config src/.libs src/*.o
+	dh_autoreconf_clean
+	dh_clean
+
+
+install: install-openssl install-gnutls
+
+install-openssl: build-openssl
+	dh_testdir
+	dh_testroot
+	dh_installdirs
+	cd $(BUILDDIR)/neon-openssl/ && $(MAKE) install-lib install-headers install-config install-man DESTDIR=$(DESTDIR)/$(package)
+	chrpath -d $(CURDIR)/debian/$(package)/usr/lib/*/libneon.so.27
+	rm -f $(CURDIR)/debian/$(package)/usr/lib/*/libneon.la
+	dh_movefiles -v -p$(package)-dev --sourcedir=debian/$(package)
+	install -d debian/$(package)-dev/usr/share/aclocal
+	cp macros/neon*.m4 \
+		debian/$(package)-dev/usr/share/aclocal/
+
+	rm -rf debian/$(package)/usr/include \
+		debian/$(package)/usr/bin \
+		debian/$(package)/usr/share/man \
+		debian/$(package)/usr/lib/*/pkgconfig
+
+	touch install-openssl
+
+install-gnutls: build-gnutls
+	dh_testdir
+	dh_testroot
+	dh_installdirs
+	cd $(BUILDDIR)/neon-gnutls/ && $(MAKE) install-lib install-headers install-config install-man DESTDIR=$(DESTDIR)/$(package)-gnutls
+	chrpath -d $(CURDIR)/debian/$(package)-gnutls/usr/lib/*/libneon-gnutls.so.27
+	rm -f $(CURDIR)/debian/$(package)-gnutls/usr/lib/*/libneon-gnutls.la
+	dh_movefiles -v -p$(package)-gnutls-dev \
+	  --sourcedir=debian/$(package)-gnutls
+	ln -sf libneon-gnutls.so debian/$(package)-gnutls-dev/usr/lib/$(DEB_HOST_MULTIARCH)/libneon.so
+	ln -sf libneon-gnutls.a  debian/$(package)-gnutls-dev/usr/lib/$(DEB_HOST_MULTIARCH)/libneon.a
+	install -d debian/$(package)-gnutls-dev/usr/share/aclocal
+	cp macros/neon*.m4 \
+		debian/$(package)-gnutls-dev/usr/share/aclocal/
+
+	rm -rf debian/$(package)-gnutls/usr/include \
+		debian/$(package)-gnutls/usr/bin \
+		debian/$(package)-gnutls/usr/share/man \
+		debian/$(package)-gnutls/usr/lib/*/pkgconfig
+
+	touch install-gnutls
+
+
+binary-indep: build install
+	# No arch indep packages generated
+
+binary-arch: build install
+	dh_testdir -a
+	dh_testroot -a
+
+#	cp macros/ChangeLog macros/changelog.m4
+#	dh_installdocs -p$(package)-dev macros/changelog.m4
+#	dh_installdocs -p$(package)-gnutls-dev macros/changelog.m4
+
+	dh_installchangelogs
+	dh_installdocs -a AUTHORS BUGS NEWS THANKS TODO
+	dh_makeshlibs -p$(package) -V'$(package)'
+	dh_makeshlibs -p$(package)-gnutls -V'$(package)-gnutls'
+	dh_link
+	dh_strip -a
+	dh_lintian -a
+	dh_compress -a
+	dh_fixperms -a
+	dh_installdeb -a
+	dh_shlibdeps -a
+	dh_gencontrol -a
+	dh_md5sums -a
+	dh_builddeb -a
+
+binary: binary-indep binary-arch
+.PHONY: binary clean binary-indep binary-arch binary install

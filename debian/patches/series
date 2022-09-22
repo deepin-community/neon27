@@ -1,0 +1,5 @@
+dont-advertise-la-file.patch
+neon-config.diff
+skip_racy_test.patch
+test_search_key_cwd.patch
+no_external_man_entity.patch
