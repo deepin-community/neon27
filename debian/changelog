@@ -1,3 +1,9 @@
+neon27 (0.34.0-1deepin1) unstable; urgency=medium
+
+  * Revert t64.
+
+ -- xiangzelong <xiangzelong@deepin.org>  Tue, 11 Mar 2025 15:24:53 +0800
+
 neon27 (0.34.0-1) unstable; urgency=medium
 
   * New upstream release.

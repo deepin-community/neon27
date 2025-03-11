@@ -7,10 +7,7 @@ Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://notroj.github.io/neon/
 
-Package: libneon27t64
-Provides: ${t64:Provides}
-Replaces: libneon27
-Breaks: libneon27 (<< ${source:Version})
+Package: libneon27
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -49,19 +46,15 @@ Architecture: any
 Conflicts: libneon-dev, libneon24-doc (<= 0.24.5-1), libneon25-dev (<< 0.28.2-5), libneon27-gnutls-dev
 Provides: libneon-dev
 Replaces: libneon-dev, libneon25-dev, libneon27-gnutls-dev
-Depends: ${misc:Depends}, libneon27t64 (= ${binary:Version}), libssl-dev, libxml2-dev, libkrb5-dev, pkgconf
-Description: Header and static library files for libneon27t64
+Depends: ${misc:Depends}, libneon27 (= ${binary:Version}), libssl-dev, libxml2-dev, libkrb5-dev, pkgconf
+Description: Header and static library files for libneon27
  This package contains the headers and the static library for libneon27.
  .
  Neon provides lower-level interfaces to directly implement new HTTP
  methods, and higher-level interfaces so that you don't have to
  worry about the lower-level stuff.
 
-Package: libneon27t64-gnutls
-Provides: ${t64:Provides}
-X-Time64-Compat: libneon27-gnutls
-Replaces: libneon27-gnutls
-Breaks: libneon27-gnutls (<< ${source:Version})
+Package: libneon27-gnutls
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -101,9 +94,9 @@ Architecture: any
 Conflicts: libneon-dev, libneon24-doc (<= 0.24.5-1), libneon25-dev (<< 0.28.2-5), libneon27-dev
 Provides: libneon-dev
 Replaces: libneon-dev, libneon25-dev, libneon27-dev
-Depends: ${misc:Depends}, libneon27t64-gnutls (= ${binary:Version}),
+Depends: ${misc:Depends}, libneon27-gnutls (= ${binary:Version}),
  libgnutls28-dev, libxml2-dev, libkrb5-dev, pkgconf
-Description: Header and static library files for libneon27t64 (GnuTLS enabled)
+Description: Header and static library files for libneon27 (GnuTLS enabled)
  This package contains the headers and the static library for
  libneon27-gnutls.
  .
