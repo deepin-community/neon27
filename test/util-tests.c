@@ -26,6 +26,9 @@
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
 
 #include "ne_utils.h"
 #include "ne_md5.h"
@@ -42,19 +45,13 @@ static const struct {
 } accept_sl[] = {
     /* These are really valid. */
     { "HTTP/1.1 200 OK", 1, 1, 200, "OK" },
-    { "HTTP/1.1000 200 OK", 1, 1000, 200, "OK" },
-    { "HTTP/1000.1000 200 OK", 1000, 1000, 200, "OK" },
-    { "HTTP/00001.1 200 OK", 1, 1, 200, "OK" },
-    { "HTTP/1.00001 200 OK", 1, 1, 200, "OK" },
-    { "HTTP/99.99 999 99999", 99, 99, 999, "99999" },
-    { "HTTP/1.1 100 ", 1, 1, 100, "" },
+    { "HTTP/9.9 599 OK", 9, 9, 599, "OK" },
+    { "HTTP/1.0 123 OK-is-OK1234", 1, 0, 123, "OK-is-OK1234" },
+    { "HTTP/1.1 100 Alpha\tBeta", 1, 1, 100, "Alpha Beta" }, /* should be cleaned. */
+    { "HTTP/1.1 100 Alpha  Beta", 1, 1, 100, "Alpha  Beta" },
+    { "HTTP/1.1 100 fØØbÆr", 1, 1, 100, "f    b  r" }, /* UTF-8 should be cleaned */
 
     /* these aren't really valid but we should be able to parse them. */
-    { "HTTP/1.1 100", 1, 1, 100, "" },
-    { "HTTP/1.1   200   OK", 1, 1, 200, "OK" },
-    { "HTTP/1.1   200 \t  OK", 1, 1, 200, "OK" },
-    { "   HTTP/1.1 200 OK", 1, 1, 200, "OK" },
-    { "Norman is a dog HTTP/1.1 200 OK", 1, 1, 200, "OK" },
     { NULL }
 };
 
@@ -73,6 +70,19 @@ static const char *const bad_sl[] = {
     "HTTP/1.1 10",
     "HTTP",
     "H\0TP/1.1 100 OK",
+
+    /* Previously allowed, now disallowed. */
+    "HTTP/1.1   200   OK",
+    "HTTP/1.1   200 \t  OK",
+    "   HTTP/1.1 200 OK",
+    "Norman is a dog HTTP/1.1 200 OK",
+    "HTTP/1.1000 100 OK",
+    "HTTP/1000.1000 100 OK",
+    "HTTP/00001.1 100 OK",
+    "HTTP/1.00001 100 OK",
+    "HTTP/99.99 100 OK",
+    "HTTP/1.1 600 OK",
+
     NULL
 };  
 
@@ -83,18 +93,19 @@ static int status_lines(void)
 
     for (n = 0; accept_sl[n].status != NULL; n++) {
 	ONV(ne_parse_statusline(accept_sl[n].status, &s),
-	    ("valid #%d: parse", n));
+	    ("valid #%d: parsing '%s' failed", n, accept_sl[n].status));
 	ONV(accept_sl[n].major != s.major_version, ("valid #%d: major", n));
 	ONV(accept_sl[n].minor != s.minor_version, ("valid #%d: minor", n));
-	ONV(accept_sl[n].code != s.code, ("valid #%d: code", n));
+	ONV(accept_sl[n].code != s.code, ("valid #%d: code %d not %d", n, s.code, accept_sl[n].code));
 	ONV(strcmp(accept_sl[n].rp, s.reason_phrase), 
-	    ("valid #%d: reason phrase", n));
+	    ("valid #%d: reason phrase [%s] not [%s]", n, s.reason_phrase, accept_sl[n].rp));
         ne_free(s.reason_phrase);
+        memset(&s, 0, sizeof s);
     }
     
     for (n = 0; bad_sl[n] != NULL; n++) {
 	ONV(ne_parse_statusline(bad_sl[n], &s) == 0, 
-	    ("invalid #%d", n));
+	    ("invalid #%d parsed OK - [%s]", n, bad_sl[n]));
     }
 
     return OK;
@@ -254,6 +265,16 @@ static int bad_dates(void)
         BAD_DATE("asctime", ne_asctime_parse(dates[n]));
     }
 
+#if SIZEOF_TIME_T == 8 && defined(INT64_MAX)
+    {
+        char *rv = ne_rfc1123_date(INT64_MAX);
+
+        ONV(rv != NULL,
+            ("RFC1123 date conversion surprisingly worked for INT64_MAX: %s",
+             rv));
+    }
+#endif
+
     return OK;
 }
 
@@ -267,18 +288,22 @@ static int versioning(void)
     GOOD(NE_VERSION_MAJOR, NE_VERSION_MINOR, "current version");
     BAD(NE_VERSION_MAJOR + 1, 0, "later major");
     BAD(NE_VERSION_MAJOR, NE_VERSION_MINOR + 1, "later minor");
-#if NE_VERSION_MAJOR > 0
+
+#if NE_VERSION_MAJOR > 1
     BAD(NE_VERSION_MAJOR - 1, 0, "earlier major");
 #if NE_VERSION_MINOR > 0
     GOOD(NE_VERSION_MAJOR, NE_VERSION_MINOR - 1, "earlier minor");
 #endif /* NE_VERSION_MINOR > 0 */
-#else /* where NE_VERSION_MAJOR == 0 */
-    BAD(0, 26, "earlier minor for 0.x");
+
+#else /* where NE_VERSION_MAJOR < 2; note that 0.28 thru 1.0 maintain
+       * backwards compatibility to 0.27 */
+    BAD(0, 26, "minor version before 0.27");
     GOOD(0, 27, "current version back-compat to 0.27");
     GOOD(0, 28, "current version back-compat to 0.28");
     GOOD(0, 29, "current version back-compat to 0.29");
     GOOD(0, 30, "current version back-compat to 0.30");
 #endif
+
     return OK;
 }
 
@@ -335,6 +360,20 @@ static int support(void)
 #else
     ONN("i18n SSL support advertised", 
         ne_has_support(NE_FEATURE_I18N));
+#endif
+#ifdef NE_HAVE_GSSAPI
+    ONN("GSSAPI support not advertised", 
+        !ne_has_support(NE_FEATURE_GSSAPI));
+#else
+    ONN("GSSAPI support advertised", 
+        ne_has_support(NE_FEATURE_GSSAPI));
+#endif
+#ifdef NE_HAVE_LIBPXY
+    ONN("libproxy support not advertised", 
+        !ne_has_support(NE_FEATURE_LIBPXY));
+#else
+    ONN("libproxy support advertised", 
+        ne_has_support(NE_FEATURE_LIBPXY));
 #endif
     return OK;
 }

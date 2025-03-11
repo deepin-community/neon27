@@ -5,7 +5,7 @@ Upstream-Contact: Joe Orton <joe@manyfish.co.uk>
 Source: https://github.com/notroj/neon/
 
 Files: *
-Copyright: 1999-2012 Joe Orton <joe@manyfish.co.uk>
+Copyright: 1999-2023 Joe Orton <joe@manyfish.co.uk>
 License: GPL-2+
 
 Files: src/ne_privssl.h src/ne_gnutls.c src/ne_socket.c

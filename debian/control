@@ -2,11 +2,15 @@ Source: neon27
 Section: net
 Priority: optional
 Maintainer: Laszlo Boszormenyi (GCS) <gcs@debian.org>
-Build-Depends: debhelper-compat (= 13), pkg-config, libxml2-dev, libssl-dev (>= 0.9.8c), libgnutls28-dev, krb5-multidev, libz-dev, ca-certificates, chrpath, xmlto
+Build-Depends: dpkg-dev (>= 1.22.5), debhelper-compat (= 13), pkgconf, libxml2-dev, libssl-dev (>= 0.9.8c), libgnutls28-dev, libkrb5-dev, libz-dev, ca-certificates, chrpath, xmlto
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
 Homepage: https://notroj.github.io/neon/
-Standards-Version: 4.6.0
 
-Package: libneon27
+Package: libneon27t64
+Provides: ${t64:Provides}
+Replaces: libneon27
+Breaks: libneon27 (<< ${source:Version})
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -45,15 +49,19 @@ Architecture: any
 Conflicts: libneon-dev, libneon24-doc (<= 0.24.5-1), libneon25-dev (<< 0.28.2-5), libneon27-gnutls-dev
 Provides: libneon-dev
 Replaces: libneon-dev, libneon25-dev, libneon27-gnutls-dev
-Depends: ${misc:Depends}, libneon27 (= ${binary:Version}), libssl-dev, libxml2-dev, krb5-multidev, pkg-config
-Description: Header and static library files for libneon27
+Depends: ${misc:Depends}, libneon27t64 (= ${binary:Version}), libssl-dev, libxml2-dev, libkrb5-dev, pkgconf
+Description: Header and static library files for libneon27t64
  This package contains the headers and the static library for libneon27.
  .
  Neon provides lower-level interfaces to directly implement new HTTP
  methods, and higher-level interfaces so that you don't have to
  worry about the lower-level stuff.
 
-Package: libneon27-gnutls
+Package: libneon27t64-gnutls
+Provides: ${t64:Provides}
+X-Time64-Compat: libneon27-gnutls
+Replaces: libneon27-gnutls
+Breaks: libneon27-gnutls (<< ${source:Version})
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -93,9 +101,9 @@ Architecture: any
 Conflicts: libneon-dev, libneon24-doc (<= 0.24.5-1), libneon25-dev (<< 0.28.2-5), libneon27-dev
 Provides: libneon-dev
 Replaces: libneon-dev, libneon25-dev, libneon27-dev
-Depends: ${misc:Depends}, libneon27-gnutls (= ${binary:Version}),
- libgnutls28-dev, libxml2-dev, krb5-multidev, pkg-config
-Description: Header and static library files for libneon27 (GnuTLS enabled)
+Depends: ${misc:Depends}, libneon27t64-gnutls (= ${binary:Version}),
+ libgnutls28-dev, libxml2-dev, libkrb5-dev, pkgconf
+Description: Header and static library files for libneon27t64 (GnuTLS enabled)
  This package contains the headers and the static library for
  libneon27-gnutls.
  .
