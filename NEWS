@@ -1,3 +1,94 @@
+Changes in release 0.34.0
+* Interface changes:
+ - API and ABI backwards-compatible with 0.27.x and later
+ - NE_SESSFLAG_SSLv2 is now ignored
+* New interfaces and features:
+ - ne_request.h: add ne_get_response_location(),
+   add ne_get_request_target()
+ - ne_redirect.h: adds relative URI resolution per RFC 9110
+ - ne_socket.h: add ne_iaddr_set_scope(), ne_iaddr_get_scope(),
+   ne_sock_getproto()
+ - ne_session.h: add NE_SESSFLAG_STRICT session flag
+ - ne_session.h: ne_session_create() now accepts scoped IPv6
+   link-local literal addresses following the RFC 6874 syntax;
+ - ne_session.h: add ne_ssl_set_protovers() to configure TLS
+   protocol version ranges
+ - ne_utils.h: add NE_FEATURE_GSSAPI, NE_FEATURE_LIBPXY feature flags
+ - ne_ssl.h: add ne_ssl_proto_name()
+ - HTTP strictness/compliance updated for RFC 9110/9112;
+   notably stricter in parsing header field line, chunked
+   transfer-coding, status-line.
+* Bug fixes:
+ - auth: the 'realm' string passed to credentials callback is now
+   cleaned of non-printable characters.
+* Documentation & header updates for RFC 9110/9112.
+* New NE_MINIMUM_VERSION() autoconf macro for better version handling.
+
+Changes in release 0.33.0:
+* Interface changes:
+ - API and ABI backwards-compatible with 0.27.x and later
+* Interface clarifications:
+ - ne_locks.h: note that returned lock may have a different URI
+   than the path passed to ne_lock_discover() due to added
+   support for RFC 4918 "lockroot" in lock discovery
+ - ne_request.h: ne_request_create() takes a "target" rather
+   than a path and this can also be an absolute-URI
+ - ne_request.h: never-used ne_free_hooks typedef removed
+ - ne_dates.h: clarified error cases (behaviour unchanged)
+ - ne_session.h: ne_session_create() 'host' must match RFC 3986
+   syntax; IPv6 literal addresses must use [] brackets
+* New interfaces and features:
+ - added new configure flag --enable-auto-libproxy which enables
+   libproxy by default for new sessions (Jan-Michael Brummer)
+ - ne_locks.h: added DAV:lockroot support per RFC 4918
+ - ne_ssl.h: ne_ssl_trust_default_ca() now a no-op for non-SSL sessions
+ - ne_request.h: add ne_add_interim_handler() to handle interim
+   (1xx) responses; headers in interim responses are now accessible
+ - ne_basic.h: add ne_putbuf()
+ - ne_strhash: SHA-512/256 now supported for LibreSSL 3.8+ (orbea)
+ - response handling no longer applies a maximum limit on 1xx interim
+   responses; an overall timeout equal to the read timeout is now
+   applied if a read timeout is configured and 1XXTIMEOUT is enabled
+ - ne_request.h: add NE_REQFLAG_1XXTIMEOUT
+* Bug fixes:
+ - test suite now works correctly on IPv6-only hosts (Jeremy Sowden)
+ - fixes for building against LibreSSL (orbea)
+ - ne_uri_parse() fixes for handling URI with no path and catch
+   some invalid URIs which were allowed (fasticc)
+ - retry requests after a 408 response on a persisted connection
+ - 207 error strings are cleaned and compressed to a single line
+ - fixed thread-safety in ne_rfc1123_date where gmtime_r is available
+ - ne_lock_refresh() fixed to use a non-idempotent request
+ - TLS name verification updated to match RFC 9110/6125, added strict
+   handling of IP literals vs DNS names
+
+Changes in release 0.32.5:
+* NOTE: Since 0.32.0 the "$KRB5_CONFIG" environment variable is ignored
+  when running configure. Use KRB5_CONF_TOOL instead to specify an
+  alternative to /usr/bin/krb5-config.
+* Fail for configure --with-gssapi if GSSAPI can't be enabled (issue #102)
+* Add Georgian translation (NorwayFun)
+* Fixes for Windows MSYS2/MinGW build, including cross-build (Jim Klimov)
+
+Changes in release 0.32.4:
+* Fix Digest regression in allowing implicit algorithm= (issue #88)
+* Fix Digest to safely allow spaces in usernames (without userhash)
+* ne_ssl_trust_default_ca() now uses the system's trusted CAs
+  with GnuTLS where supported (matching behaviour of OpenSSL)
+
+Changes in release 0.32.3:
+* Improvements and fixes to Windows build (Chun-wei Fan)
+* Fix finding pkg-config when cross-compiling (Hugh McMaster)
+* Fix Digest cnonce entropy sources in non-SSL builds
+* Fix cases where Digest usernames were rejected as non-ASCII
+* Fix build failures with OpenSSL 1.1 on some platforms
+
+Changes in release 0.32.2:
+* Fix auth handling for request-target of "*" (regressed since 0.31.x)
+* Fix bindtextdomain() detection on OS X (Daniel Macks)
+* Fix regeneration of docs in "make install" (Lonnie Abelbeck)
+* Fixes for NetBSD build (Thomas Klausner)
+
 Changes in release 0.32.1:
 * Fix configure CFLAGS handling in Kerberos detection.
 * Various spelling fixes.

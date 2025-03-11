@@ -1,7 +1,8 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-package=libneon27
+package=libneon27t64
+dev_package=libneon27
 upstream-version=$(shell head -n 1 debian/changelog | sed -e 's/.*(\(\([0-9]\+:\)\?\([^-]\+\).*\).*).*/\3/' )
 
 export KRB5_CONFIG=/usr/bin/krb5-config.mit
@@ -96,10 +97,10 @@ install-openssl: build-openssl
 	cd $(BUILDDIR)/neon-openssl/ && $(MAKE) install-lib install-headers install-config install-man DESTDIR=$(DESTDIR)/$(package)
 	chrpath -d $(CURDIR)/debian/$(package)/usr/lib/*/libneon.so.27
 	rm -f $(CURDIR)/debian/$(package)/usr/lib/*/libneon.la
-	dh_movefiles -v -p$(package)-dev --sourcedir=debian/$(package)
-	install -d debian/$(package)-dev/usr/share/aclocal
+	dh_movefiles -v -p$(dev_package)-dev --sourcedir=debian/$(package)
+	install -d debian/$(dev_package)-dev/usr/share/aclocal
 	cp macros/neon*.m4 \
-		debian/$(package)-dev/usr/share/aclocal/
+		debian/$(dev_package)-dev/usr/share/aclocal/
 
 	rm -rf debian/$(package)/usr/include \
 		debian/$(package)/usr/bin \
@@ -115,13 +116,13 @@ install-gnutls: build-gnutls
 	cd $(BUILDDIR)/neon-gnutls/ && $(MAKE) install-lib install-headers install-config install-man DESTDIR=$(DESTDIR)/$(package)-gnutls
 	chrpath -d $(CURDIR)/debian/$(package)-gnutls/usr/lib/*/libneon-gnutls.so.27
 	rm -f $(CURDIR)/debian/$(package)-gnutls/usr/lib/*/libneon-gnutls.la
-	dh_movefiles -v -p$(package)-gnutls-dev \
+	dh_movefiles -v -p$(dev_package)-gnutls-dev \
 	  --sourcedir=debian/$(package)-gnutls
-	ln -sf libneon-gnutls.so debian/$(package)-gnutls-dev/usr/lib/$(DEB_HOST_MULTIARCH)/libneon.so
-	ln -sf libneon-gnutls.a  debian/$(package)-gnutls-dev/usr/lib/$(DEB_HOST_MULTIARCH)/libneon.a
-	install -d debian/$(package)-gnutls-dev/usr/share/aclocal
+	ln -sf libneon-gnutls.so debian/$(dev_package)-gnutls-dev/usr/lib/$(DEB_HOST_MULTIARCH)/libneon.so
+	ln -sf libneon-gnutls.a  debian/$(dev_package)-gnutls-dev/usr/lib/$(DEB_HOST_MULTIARCH)/libneon.a
+	install -d debian/$(dev_package)-gnutls-dev/usr/share/aclocal
 	cp macros/neon*.m4 \
-		debian/$(package)-gnutls-dev/usr/share/aclocal/
+		debian/$(dev_package)-gnutls-dev/usr/share/aclocal/
 
 	rm -rf debian/$(package)-gnutls/usr/include \
 		debian/$(package)-gnutls/usr/bin \

@@ -1,15 +1,15 @@
 
-[![Travis CI Build Status](https://travis-ci.com/notroj/neon.svg?branch=master)](https://travis-ci.com/github/notroj/neon)
 [![Build and test](https://github.com/notroj/neon/actions/workflows/ci.yml/badge.svg)](https://github.com/notroj/neon/actions/workflows/ci.yml)
 
 # neon
 
 _neon_ is an HTTP and WebDAV client library, with a C language API.
 
-Mailing list: neon@lists.manyfish.co.uk || Web site: https://notroj.github.io/neon/
+GitHub: https://github.com/notroj/neon | Web: https://notroj.github.io/neon/
 
 The neon API and ABI are stable and maintain backwards compatibility
-from 0.27.x through 0.31.x.
+since 0.27 through to 1.0.0. From neon 1.0.0 onwards, semantic
+versioning will be used. https://semver.org/
 
 Features:
 
@@ -43,7 +43,7 @@ The autoconf macros in the "macros" directory are under a less
 restrictive license, see each file for details.
 
 ~~~
-neon is Copyright (C) 1999-2021 Joe Orton
+neon is Copyright (C) 1999-2024 Joe Orton
 Portions are:
 Copyright (C) Aleix Conchillo Flaque
 Copyright (C) Arfrever Frehtes Taifersar Arahesis
@@ -57,6 +57,7 @@ Copyright (C) Karl Ove Hufthammer.
 Copyright (C) Michael Sobolev
 Copyright (C) Nobuyuki Tsuchimura
 Copyright (C) Sylvain Glaize
+Copyright (C) Temuri Doghonadze
 Copyright (C) Thomas Schultz
 Copyright (C) Vladimir Berezniker
 Copyright (C) Yves Martin

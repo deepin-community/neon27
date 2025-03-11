@@ -364,7 +364,7 @@ void ne_ssl_cert_validity_time(const ne_ssl_certificate *cert,
  * If 'identity' is non-NULL, store the malloc-allocated identity in
  * *identity.  If 'server' is non-NULL, it must be the network address
  * of the server in use, and identity must be NULL. */
-static int check_identity(const ne_uri *server, gnutls_x509_crt_t cert,
+static int check_identity(const struct host_info *server, gnutls_x509_crt_t cert,
                           char **identity)
 {
     char name[255];
@@ -374,7 +374,7 @@ static int check_identity(const ne_uri *server, gnutls_x509_crt_t cert,
     size_t len;
     const char *hostname;
     
-    hostname = server ? server->host : "";
+    hostname = server ? server->hostname : "";
 
     do {
         len = sizeof name - 1;
@@ -384,7 +384,10 @@ static int check_identity(const ne_uri *server, gnutls_x509_crt_t cert,
         case GNUTLS_SAN_DNSNAME:
             name[len] = '\0';
             if (identity && !found) *identity = ne_strdup(name);
-            match = ne__ssl_match_hostname(name, len, hostname);
+            /* Only match if the server was not identified by a
+             * literal IP address; avoiding wildcard matches. */
+            if (server && !server->literal)
+                match = ne__ssl_match_hostname(name, len, hostname);
             found = 1;
             break;
         case GNUTLS_SAN_IPADDRESS: {
@@ -396,43 +399,16 @@ static int check_identity(const ne_uri *server, gnutls_x509_crt_t cert,
             else 
                 ia = NULL;
             if (ia) {
-                char buf[128];
-                
-                match = strcmp(hostname, 
-                               ne_iaddr_print(ia, buf, sizeof buf)) == 0;
-                if (identity) *identity = ne_strdup(buf);
+                if (server && server->literal)
+                    match = ne_iaddr_cmp(ia, server->literal) == 0;
                 found = 1;
                 ne_iaddr_free(ia);
-            } else {
+            }
+            else {
                 NE_DEBUG(NE_DBG_SSL, "iPAddress name with unsupported "
                          "address type (length %" NE_FMT_SIZE_T "), skipped.\n",
                          len);
             }
-        } break;
-        case GNUTLS_SAN_URI: {
-            ne_uri uri;
-            
-            name[len] = '\0';
-            
-            if (ne_uri_parse(name, &uri) == 0 && uri.host && uri.scheme) {
-                ne_uri tmp;
-                
-                if (identity && !found) *identity = ne_strdup(name);
-                found = 1;
-                
-                if (server) {
-                    /* For comparison purposes, all that matters is
-                     * host, scheme and port; ignore the rest. */
-                    memset(&tmp, 0, sizeof tmp);
-                    tmp.host = uri.host;
-                    tmp.scheme = uri.scheme;
-                    tmp.port = uri.port;
-                    
-                    match = ne_uri_cmp(server, &tmp) == 0;
-                }
-            }
-            
-            ne_uri_free(&uri);
         } break;
 
         default:
@@ -453,7 +429,8 @@ static int check_identity(const ne_uri *server, gnutls_x509_crt_t cert,
                                                 seq, 0, name, &len);
             if (ret == 0) {
                 if (identity) *identity = ne_strdup(name);
-                match = ne__ssl_match_hostname(name, len, hostname);
+                if (server && !server->literal)
+                    match = ne__ssl_match_hostname(name, len, hostname);
             }
         } else {
             return -1;
@@ -737,12 +714,57 @@ int ne_ssl_context_set_verify(ne_ssl_context *ctx, int required,
 
 void ne_ssl_context_set_flag(ne_ssl_context *ctx, int flag, int value)
 {
-    /* SSLv2 not supported. */
 }
 
 int ne_ssl_context_get_flag(ne_ssl_context *ctx, int flag)
 {
     return 0;
+}
+
+int ne_ssl_context_set_versions(ne_ssl_context *ctx, enum ne_ssl_protocol min,
+                                enum ne_ssl_protocol max)
+{
+#ifdef HAVE_GNUTLS_SET_DEFAULT_PRIORITY_APPEND
+    ne_buffer *prio;
+
+    if (min > max) return NE_SOCK_ERROR;
+
+    if (ctx->priority) {
+        ne_free(ctx->priority);
+        ctx->priority = NULL;
+    }
+
+    if (min == 0 && max == 0) {
+        return 0;
+    }
+
+    prio = ne_buffer_create();
+    ne_buffer_czappend(prio, "+VERS-ALL");
+
+    if (min > NE_SSL_PROTO_SSL_3)
+        ne_buffer_czappend(prio, ":-VERS-SSL3.0");
+    if (min > NE_SSL_PROTO_TLS_1_0)
+        ne_buffer_czappend(prio, ":-VERS-TLS1.0");
+    if (min > NE_SSL_PROTO_TLS_1_1)
+        ne_buffer_czappend(prio, ":-VERS-TLS1.1");
+    if (min > NE_SSL_PROTO_TLS_1_2)
+        ne_buffer_czappend(prio, ":-VERS-TLS1.2");
+
+    if (max && max < NE_SSL_PROTO_TLS_1_3)
+        ne_buffer_czappend(prio, ":-VERS-TLS1.3");
+    if (max && max < NE_SSL_PROTO_TLS_1_2)
+        ne_buffer_czappend(prio, ":-VERS-TLS1.2");
+    if (max && max < NE_SSL_PROTO_TLS_1_1)
+        ne_buffer_czappend(prio, ":-VERS-TLS1.1");
+    if (max && max < NE_SSL_PROTO_TLS_1_0)
+        ne_buffer_czappend(prio, ":-VERS-TLS1.0");
+
+    ctx->priority = ne_buffer_finish(prio);
+
+    return 0;
+#else
+    return NE_SOCK_ERROR;
+#endif
 }
 
 void ne_ssl_context_destroy(ne_ssl_context *ctx)
@@ -757,7 +779,8 @@ void ne_ssl_context_destroy(ne_ssl_context *ctx)
     } else if (ctx->cache.server.key.data) {
         gnutls_free(ctx->cache.server.key.data);
         gnutls_free(ctx->cache.server.data.data);
-    }    
+    }
+    if (ctx->priority) ne_free(ctx->priority);
     ne_free(ctx);
 }
 
@@ -940,13 +963,9 @@ static int check_certificate(ne_session *sess, gnutls_session_t sock,
                              ne_ssl_certificate *chain)
 {
     int ret, failures = 0;
-    ne_uri server;
     unsigned int status;
 
-    memset(&server, 0, sizeof server);
-    ne_fill_server_uri(sess, &server);
-    ret = check_identity(&server, chain->subject, NULL);
-    ne_uri_free(&server);
+    ret = check_identity(&sess->server, chain->subject, NULL);
 
     if (ret < 0) {
         ne_set_error(sess, _("Server certificate was missing commonName "
@@ -1080,11 +1099,17 @@ void ne_ssl_context_trustcert(ne_ssl_context *ctx, const ne_ssl_certificate *cer
 
 void ne_ssl_trust_default_ca(ne_session *sess)
 {
+    if (sess->ssl_context) {
 #ifdef NE_SSL_CA_BUNDLE
-    gnutls_certificate_set_x509_trust_file(sess->ssl_context->cred,
-                                           NE_SSL_CA_BUNDLE,
-                                           GNUTLS_X509_FMT_PEM);
+        gnutls_certificate_set_x509_trust_file(sess->ssl_context->cred,
+                                               NE_SSL_CA_BUNDLE,
+                                               GNUTLS_X509_FMT_PEM);
+#elif defined(HAVE_GNUTLS_CERTIFICATE_SET_X509_SYSTEM_TRUST)
+        int rv = gnutls_certificate_set_x509_system_trust(sess->ssl_context->cred);
+
+        NE_DEBUG(NE_DBG_SSL, "ssl: System certificates trusted (%d)\n", rv);
 #endif
+    }
 }
 
 /* Read the contents of file FILENAME into *DATUM. */
@@ -1399,6 +1424,9 @@ void ne_ssl_cert_free(ne_ssl_certificate *cert)
 
 int ne_ssl_cert_cmp(const ne_ssl_certificate *c1, const ne_ssl_certificate *c2)
 {
+#ifdef HAVE_GNUTLS_X509_CRT_EQUALS
+    return !gnutls_x509_crt_equals(c1->subject, c2->subject);
+#else
     char digest1[NE_SSL_DIGESTLEN], digest2[NE_SSL_DIGESTLEN];
 
     if (ne_ssl_cert_digest(c1, digest1) || ne_ssl_cert_digest(c2, digest2)) {
@@ -1406,6 +1434,7 @@ int ne_ssl_cert_cmp(const ne_ssl_certificate *c1, const ne_ssl_certificate *c2)
     }
 
     return strcmp(digest1, digest2);
+#endif
 }
 
 /* The certificate import/export format is the base64 encoding of the

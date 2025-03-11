@@ -47,7 +47,7 @@ transform = @program_transform_name@
 LIBTOOL = @LIBTOOL@
 XMLTO = xmlto
 GCOV = gcov
-XGETTEXT_OPTS = --keyword=_ --keyword=N_ --msgid-bugs-address=neon@lists.manyfish.co.uk \
+XGETTEXT_OPTS = --keyword=_ --keyword=N_ --msgid-bugs-address=https://github.com/notroj/neon \
 		--default-domain=neon --flag ne_print_request_header:3:c-format \
 		--flag ne_snprintf:3:c-format --flag ne_vsnprintf:3:c-format \
 		--flag ne_set_error:2:c-format
@@ -87,9 +87,8 @@ uncover: subdirs
 subdirs:
 	@cd src && $(MAKE)
 
-# Uses Tim Waugh's excellent "xmlto" utility, see
-# http://cyberelk.net/tim/xmlto/.  (The docs target is executed at release
-# time before generating a .tar.gz)
+# Regenerating the docs requires xmlto to be installed, this target is
+# executed when release tarballs are generated.
 docs: docs-man docs-html
 
 docs-man:
@@ -105,6 +104,7 @@ docs-ps:
 docs-html:
 	test -d doc/html && rm -rf doc/html || true
 	mkdir -p doc/html
+	cp $(srcdir)/doc/manual.css doc/html
 	$(XMLTO) -o `pwd`/doc/html -x $(srcdir)/doc/html.xsl html $(srcdir)/doc/manual.xml
 
 # Validate the manual source
@@ -128,13 +128,13 @@ neon-config: $(srcdir)/neon-config.in
 
 install-docs: install-man install-html
 
-install-html: docs-html
+install-html:
 	$(INSTALL) -d $(DESTDIR)$(docdir)/html
 	for d in doc/html/*.html; do \
 		$(INSTALL_DATA) $$d $(DESTDIR)$(docdir)/html; \
 	done
 
-install-man: docs-man
+install-man:
 	$(INSTALL) -d $(DESTDIR)$(man3dir)
 	$(INSTALL) -d $(DESTDIR)$(man1dir)
 	for m in doc/man/*.3; do \

@@ -296,6 +296,8 @@ static int parse(void)
         { "http://foo/bar#beta", "http", "foo", 0, "/bar", NULL, NULL, "beta" },
         { "http://foo/bar?#beta", "http", "foo", 0, "/bar", NULL, "", "beta" },
         { "http://foo/bar?alpha?beta", "http", "foo", 0, "/bar", NULL, "alpha?beta", NULL },
+        { "http://foo?alpha", "http", "foo", 0, "/", NULL, "alpha", NULL },
+        { "http://foo#beta", "http", "foo", 0, "/", NULL, NULL, "beta" },
 
         /* Examples from RFC3986§1.1.2: */
         { "ftp://ftp.is.co.za/rfc/rfc1808.txt", "ftp", "ftp.is.co.za", 0, "/rfc/rfc1808.txt", NULL, NULL, NULL },
@@ -318,6 +320,10 @@ static int parse(void)
         { "http://[a:a:a:a::0]/foo", "http", "[a:a:a:a::0]", 0, "/foo", NULL, NULL, NULL },
         { "http://[::1]:8080/bar", "http", "[::1]", 8080, "/bar", NULL, NULL, NULL },
         { "ftp://[feed::cafe]:555", "ftp", "[feed::cafe]", 555, "/", NULL, NULL, NULL },
+
+        /* Test RFC 6874 syntax, an extension of RFC 3987. */
+        { "http://[fe80::cafe%25eth0]:555", "http", "[fe80::cafe%25eth0]", 555, "/", NULL, NULL, NULL },
+        { "http://[fe80::cafe%251]:555", "http", "[fe80::cafe%251]", 555, "/", NULL, NULL, NULL },
 
         { "DAV:", "DAV", NULL, 0, "", NULL, NULL, NULL },
         
@@ -371,12 +377,14 @@ static int parse(void)
 static int failparse(void)
 {
     static const char *uris[] = {
-	"http://[::1/",
-	"http://[::1]f:80/",
-	"http://[::1]]:80/",
+        "http://[::1/",
+        "http://[::1]f:80/",
+        "http://[::1]]:80/",
         "http://foo/bar asda",
         "http://fish/[foo]/bar",
-	NULL
+        "http://foo:80bar",
+        "http://foo:80:80/bar",
+        NULL
     };
     int n;
     

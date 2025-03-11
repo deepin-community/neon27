@@ -1,3 +1,51 @@
+neon27 (0.34.0-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Update Lintian overrides.
+  * Update Standards-Version to 4.7.0 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Sat, 30 Nov 2024 07:36:23 +0100
+
+neon27 (0.33.0-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Rename libraries for 64-bit time_t transition.  Closes: #1064246
+
+ -- Benjamin Drung <bdrung@debian.org>  Wed, 28 Feb 2024 22:40:56 +0000
+
+neon27 (0.33.0-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Fri, 02 Feb 2024 23:12:14 +0100
+
+neon27 (0.32.5-2) unstable; urgency=medium
+
+  * Backport fix for FTBFS on IPV6-only buildds (closes: #1029944).
+  * Use no for Rules-Requires-Root.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Tue, 03 Oct 2023 23:27:50 +0200
+
+neon27 (0.32.5-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Update Standards-Version to 4.6.2 .
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Thu, 26 Jan 2023 17:38:19 +0100
+
+neon27 (0.32.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Mon, 12 Sep 2022 14:55:39 +0200
+
+neon27 (0.32.2-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Update watch file.
+
+ -- Laszlo Boszormenyi (GCS) <gcs@debian.org>  Fri, 14 Jan 2022 18:11:44 +0100
+
 neon27 (0.32.1-1) unstable; urgency=medium
 
   * New upstream release.

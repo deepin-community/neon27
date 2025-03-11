@@ -9,7 +9,7 @@ Last-Update: 2016-11-27
 
 --- neon27-0.30.2.orig/test/socket.c
 +++ neon27-0.30.2/test/socket.c
-@@ -109,7 +109,8 @@ static int init_ssl(void)
+@@ -118,7 +118,8 @@ static int init_ssl(void)
   
      /* take srcdir as argv[1]. */
      if (test_argc > 1) {

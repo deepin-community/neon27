@@ -13,8 +13,8 @@
 # LGPL, see COPYING.LIB for more details
 
 # This file is part of the neon HTTP/WebDAV client library.
-# See http://www.webdav.org/neon/ for the latest version. 
-# Please send any feedback to <neon@lists.manyfish.co.uk>
+# See https://notroj.github.io/neon/ for the latest version. 
+# Please report feedback via <https://github.com/notroj/neon/>
 
 #
 # Usage:
@@ -136,12 +136,12 @@ AC_DEFUN([NE_VERSIONS_BUNDLED], [
 
 # Define the current versions.
 NE_VERSION_MAJOR=0
-NE_VERSION_MINOR=32
-NE_VERSION_PATCH=1
+NE_VERSION_MINOR=34
+NE_VERSION_PATCH=0
 NE_VERSION_TAG=
 
-# 0.32.x is backwards-compatible to 0.27.x, so AGE=5
-NE_LIBTOOL_VERSINFO="32:${NE_VERSION_PATCH}:5"
+# 0.34.x is backwards-compatible to 0.27.x, so AGE=7
+NE_LIBTOOL_VERSINFO="34:${NE_VERSION_PATCH}:7"
 
 NE_DEFINE_VERSIONS
 
@@ -157,14 +157,26 @@ else
 fi
 ])
 
-dnl Define the minimum required versions, usage:
-dnl   NE_REQUIRE_VERSIONS([major-version], [minor-versions])
-dnl e.g.
-dnl   NE_REQUIRE_VERSIONS([0], [24 25])
-dnl to require neon 0.24.x or neon 0.25.x.
-AC_DEFUN([NE_REQUIRE_VERSIONS], [
+dnl Define the minimum required version, usage:
+dnl   NE_MINIMUM_VERSION([major-version], [minor-version])
+dnl If a major-version of 0 is used, neon 1.x will be allowed
+dnl as backward compatible. FOr example:
+dnl   NE_MINIMUM_VERSION([0], [27])
+dnl require neon 0.27.x or later or any 1.x
+AC_DEFUN([NE_MINIMUM_VERSION], [
 m4_define([ne_require_major], [$1])
+# ## ne_require_major $1
 m4_define([ne_require_minor], [$2])
+# ## ne_require_minor $2
+])
+
+
+dnl Deprecated.
+AC_DEFUN([NE_REQUIRE_VERSIONS], [
+# Extract the first minor version from the list:
+NE_MINIMUM_VERSION([$1],m4_bregexp($2,[\([0-9]*\)\ .*],[\1]))
+m4_warn([obsolete], [The `NE_REQUIRE_VERSIONS` macro is obsolete.
+Update to use `NE_MINIMUM_VERSION`])
 ])
 
 dnl Check that the external library found in a given location
@@ -176,40 +188,45 @@ dnl Usage:
 dnl    NEON_CHECK_VERSION(ACTIONS-IF-OKAY, ACTIONS-IF-FAILURE)
 dnl
 AC_DEFUN([NEON_CHECK_VERSION], [
+ne_libver=`$NEON_CONFIG --version | sed -e "s/neon //g"`
 m4_ifdef([ne_require_major], [
     # Check whether the library is of required version
     ne_save_LIBS="$LIBS"
     ne_save_CFLAGS="$CFLAGS"
     CFLAGS="$CFLAGS `$NEON_CONFIG --cflags`"
     LIBS="$LIBS `$NEON_CONFIG --libs`"
-    ne_libver=`$NEON_CONFIG --version | sed -e "s/neon //g"`
     # Check whether it's possible to link against neon
     AC_CACHE_CHECK([linking against neon], [ne_cv_lib_neon],
     [AC_LINK_IFELSE(
         [AC_LANG_PROGRAM([[#include <ne_utils.h>]], [[ne_version_match(0, 0);]])],
 	[ne_cv_lib_neon=yes], [ne_cv_lib_neon=no])])
     if test "$ne_cv_lib_neon" = "yes"; then
+       ne_libmajor=`echo $ne_libver | sed 's/\..*//g'`
+       ne_libminor=`echo $ne_libver | sed 's/.*\.\([[0-9]]*\)\..*/\1/g'`
        ne_cv_lib_neonver=no
-       for v in ne_require_minor; do
-          case $ne_libver in
-          ne_require_major.$v.*) ne_cv_lib_neonver=yes ;;
-          esac
-       done
+       AC_MSG_NOTICE([found neon library version ${ne_libmajor}.${ne_libminor}.x, required ne_require_major[.]ne_require_minor[.x]])
+       # neon 1.x maintains backwards compat to neon 0.27.x
+       if test ne_require_major -eq 0 -a ne_require_minor -ge 27 \
+          -a $ne_libmajor = 1; then
+          ne_cv_lib_neonver=yes
+       elif test $ne_libmajor -eq ne_require_major \
+            -a $ne_libminor -ge ne_require_minor; then
+          ne_cv_lib_neonver=yes
+       fi
     fi
     ne_goodver=$ne_cv_lib_neonver
     LIBS=$ne_save_LIBS
     CFLAGS=$ne_save_CFLAGS
 ], [
-   # NE_REQUIRE_VERSIONS not used; presume all versions OK!
+    dnl NE_REQUIRE_VERSIONS/NE_MINIMUM_VERSION not used; anything goes.
     ne_goodver=yes
-    ne_libver="(version unknown)"
 ])
 
 if test "$ne_goodver" = "yes"; then
     AC_MSG_NOTICE([using neon library $ne_libver])
     $1
 else
-    AC_MSG_NOTICE([incompatible neon library version $ne_libver: wanted ne_require_major.ne_require_minor])
+    AC_MSG_NOTICE([incompatible neon library version $ne_libver: minimum required ne_require_major.ne_require_minor])
     $2
 fi])
 
@@ -259,6 +276,10 @@ NEON_CHECK_VERSION([
     NE_DEFINE_VERSIONS
     neon_library_message="library in ${neon_prefix} (${NEON_VERSION})"
     neon_xml_parser_message="using whatever neon uses"
+    NEON_CHECK_SUPPORT([i18n], [I18N], [Internationalization])
+    NEON_CHECK_SUPPORT([dav], [DAV], [WebDAV])
+    NEON_CHECK_SUPPORT([gssapi], [GSSAPI], [GSSAPI])
+    NEON_CHECK_SUPPORT([libpxy], [LIBPXY], [libproxy])
     NEON_CHECK_SUPPORT([ssl], [SSL], [SSL])
     NEON_CHECK_SUPPORT([zlib], [ZLIB], [zlib])
     NEON_CHECK_SUPPORT([ipv6], [IPV6], [IPv6])
@@ -364,7 +385,7 @@ AC_REQUIRE([NE_CHECK_OS])
 
 AC_CACHE_CHECK([for library containing $1], [ne_cv_libsfor_$1], [
   case $ne_cv_os_uname in
-  MINGW*)
+  MINGW*|MSYS_NT*)
     ;;
   *)
     case $1 in
@@ -375,6 +396,10 @@ AC_CACHE_CHECK([for library containing $1], [ne_cv_libsfor_$1], [
     socket)
       ne__prologue="#include <sys/socket.h>"
       ne__code="socket(0,0,0);"
+      ;;
+    bindtextdomain)
+      ne__prologue="#include <libintl.h>"
+      ne__code="bindtextdomain(\"\",\"\");"
       ;;
     *)
       ne__prologue=""
@@ -388,7 +413,7 @@ AC_CACHE_CHECK([for library containing $1], [ne_cv_libsfor_$1], [
     ne_cv_libsfor_$1="not found"
     for lib in $2; do
       case $ne_cv_os_uname in
-      MINGW*)
+      MINGW*|MSYS_NT*)
         case $lib in
         ws2_32)
           ne__prologue="#include <winsock2.h>"
@@ -424,6 +449,7 @@ AC_CACHE_CHECK([for library containing $1], [ne_cv_libsfor_$1], [
     LIBS=$ne_sl_save_LIBS
   ])
 ])
+AC_CHECK_HEADERS([wspiapi.h])
 
 if test "$ne_cv_libsfor_$1" = "not found"; then
    m4_if([$4], [], [AC_MSG_ERROR([could not find library containing $1])], [$4])
@@ -456,16 +482,29 @@ AC_DEFUN([NE_CHECK_OS], [
 # Check for Darwin, which needs extra cpp and linker flags.
 AC_CACHE_CHECK([for uname], ne_cv_os_uname, [
  ne_cv_os_uname=`uname -s 2>/dev/null`
+ dnl # Check with autoconf cross-build request, particularly the
+ dnl # "host" (system type where build program will be executed)
+ dnl # NOTE: Quick-and-dirty approach to handle building libneon
+ dnl # for Windows using Linux environments with mingw packages:
+ dnl # other code in this script checks for "MINGW*" matches.
+ dnl #  ./configure --prefix=/usr/i686-w64-mingw32 --host=i686-w64-mingw32 PKG_CONFIG_PATH=/usr/i686-w64-mingw32/lib/pkgconfig
+ case x"$host" in
+    x*mingw*) ne_cv_os_uname="MINGW-$host" ;;
+ esac
 ])
 
-if test "$ne_cv_os_uname" = "Darwin"; then
+AS_CASE([x"$ne_cv_os_uname"],
+[x"Darwin"], [
   CPPFLAGS="$CPPFLAGS -no-cpp-precomp"
   LDFLAGS="$LDFLAGS -flat_namespace" 
   # poll has various issues in various Darwin releases
   if test x${ac_cv_func_poll+set} != xset; then
     ac_cv_func_poll=no
   fi
-fi
+],
+[xMINGW*|xMSYS*],
+  [NEON_LIBS="$NEON_LIBS -lws2_32"]
+)dnl AS_CASE
 ])
 
 AC_DEFUN([NEON_COMMON_CHECKS], [
@@ -485,8 +524,6 @@ AC_REQUIRE([AC_TYPE_OFF_T])
 AC_REQUIRE([NE_CHECK_OS])
 
 AC_REQUIRE([AC_PROG_MAKE_SET])
-
-AC_REQUIRE([AC_HEADER_STDC])
 
 AC_CHECK_HEADERS([errno.h stdarg.h string.h stdlib.h sys/uio.h])
 
@@ -536,7 +573,12 @@ else
      NEON_FORMAT(off64_t)
      ne_lfsok=no
      AC_CHECK_FUNCS([strtoll strtoq], [ne_lfsok=yes; break])
-     AC_CHECK_FUNCS([lseek64 fstat64], [], [ne_lfsok=no; break])
+     AS_CASE([$ne_cv_os_uname],
+       [MINGW*|MSYS_NT*],
+         [AC_CHECK_FUNCS([lseek64], [], [ne_lfsok=no; break])],
+       dnl Default:
+         [AC_CHECK_FUNCS([lseek64 fstat64], [], [ne_lfsok=no; break])]
+     )
      if test x$ne_lfsok = xyes; then
        NE_ENABLE_SUPPORT(LFS, [LFS (large file) support enabled])
        NEON_CFLAGS="$NEON_CFLAGS -D_LARGEFILE64_SOURCE -DNE_LFS"
@@ -630,7 +672,7 @@ AC_REQUIRE([AC_FUNC_STRERROR_R])
 
 AC_CHECK_HEADERS([sys/time.h limits.h sys/select.h arpa/inet.h libintl.h \
 	signal.h sys/socket.h netinet/in.h netinet/tcp.h netdb.h sys/poll.h \
-	sys/limits.h fcntl.h iconv.h],,,
+	sys/limits.h fcntl.h iconv.h net/if.h],,,
 [AC_INCLUDES_DEFAULT
 /* netinet/tcp.h requires netinet/in.h on some platforms. */
 #ifdef HAVE_NETINET_IN_H
@@ -655,7 +697,8 @@ NE_LARGEFILE
 AC_REPLACE_FUNCS(strcasecmp)
 
 AC_CHECK_FUNCS([signal setvbuf setsockopt stpcpy poll fcntl getsockopt \
-                explicit_bzero sendmsg])
+                explicit_bzero sendmsg gettimeofday gmtime_r if_nametoindex \
+                if_indextoname])
 
 if test "x${ac_cv_func_poll}${ac_cv_header_sys_poll_h}y" = "xyesyesy"; then
   AC_DEFINE([NE_USE_POLL], 1, [Define if poll() should be used])
@@ -735,6 +778,9 @@ AC_CHECK_TYPES(socklen_t,,
 #endif
 #ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
+#endif
+#ifdef _WIN32
+# include <ws2tcpip.h>
 #endif
 ])
 
@@ -898,8 +944,8 @@ AC_DEFUN([NE_PKG_CONFIG], [
 
 m4_define([ne_cvar], m4_translit(ne_cv_pkg_[$2], [.-], [__]))dnl
 
-AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
-if test "$PKG_CONFIG" = "no"; then
+AC_PATH_TOOL(PKG_CONFIG, pkg-config, no)
+if test "x$PKG_CONFIG" = "xno"; then
    : Not using pkg-config
    $4
 else
@@ -1030,7 +1076,10 @@ gnutls)
                   gnutls_certificate_get_issuer \
                   gnutls_certificate_get_x509_cas \
                   gnutls_x509_crt_sign2 \
+                  gnutls_x509_crt_equals \
+                  gnutls_set_default_priority_append \
                   gnutls_certificate_set_retrieve_function2 \
+                  gnutls_certificate_set_x509_system_trust \
                   gnutls_privkey_import_ext])
 
    # fail if gnutls_x509_crt_sign2 is not found (it was introduced in 1.2.0, which is required)
@@ -1104,7 +1153,8 @@ esac
 
 dnl Check for Kerberos installation
 AC_DEFUN([NEON_GSSAPI], [
-AC_ARG_WITH(gssapi, AS_HELP_STRING(--without-gssapi, disable GSSAPI support))
+AC_ARG_WITH(gssapi, AS_HELP_STRING(--without-gssapi, disable GSSAPI support),
+            [need_gssapi=$withval], [need_gssapi=no])
 if test "$with_gssapi" != "no"; then
   ne_save_CFLAGS=$CFLAGS
   ne_save_LIBS=$NEON_LIBS
@@ -1128,7 +1178,7 @@ if test "x$KRB5_CONF_TOOL" != "xnone"; then
      NE_CHECK_FUNCS(gss_init_sec_context, [
       ne_save_CFLAGS=$CFLAGS
       ne_save_LIBS=$NEON_LIBS
-      AC_MSG_NOTICE([GSSAPI authentication support enabled, using $NE_GSSAPI_VERSION])
+      NE_ENABLE_SUPPORT(GSSAPI, [GSSAPI support enabled, using library ${NE_GSSAPI_LIBS} version ${NE_GSSAPI_VERSION}])
       AC_DEFINE(HAVE_GSSAPI, 1, [Define if GSSAPI support is enabled])
       AC_CHECK_HEADERS(gssapi/gssapi_generic.h)
       # Older versions of MIT Kerberos lack GSS_C_NT_HOSTBASED_SERVICE
@@ -1144,6 +1194,14 @@ if test "x$KRB5_CONF_TOOL" != "xnone"; then
    ])
    CFLAGS=$ne_save_CFLAGS
    NEON_LIBS=$ne_save_LIBS
+fi
+
+if test x$NE_FLAG_GSSAPI != xyes; then
+  if test $need_gssapi = yes; then
+    # Fail if --with-gssapi was specified but no library support found
+    AC_MSG_ERROR([could not enable GSSAPI support])
+  fi
+  NE_DISABLE_SUPPORT(GSSAPI, [GSSAPI authentication is not supported])
 fi])
 
 AC_DEFUN([NEON_LIBPROXY], [

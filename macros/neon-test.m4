@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2006 Joe Orton <joe@manyfish.co.uk>    -*- autoconf -*-
+# Copyright (C) 2001-2022 Joe Orton <joe@manyfish.co.uk>    -*- autoconf -*-
 #
 # This file is free software; you may copy and/or distribute it with
 # or without modifications, as long as this notice is preserved.
@@ -12,8 +12,8 @@
 # LGPL, see COPYING.LIB for more details
 
 # This file is part of the neon HTTP/WebDAV client library.
-# See http://www.webdav.org/neon/ for the latest version. 
-# Please send any feedback to <neon@lists.manyfish.co.uk>
+# See https://notroj.github.io/neon/ for the latest version. 
+# Please report feedback via <https://github.com/notroj/neon/>
 
 # Tests needed for the neon-test common test code.
 
@@ -30,7 +30,6 @@ AC_REQUIRE([NEON_COMMON_CHECKS])
 AC_REQUIRE([NE_FORMAT_TIMET])
 
 AC_REQUIRE([AC_TYPE_PID_T])
-AC_REQUIRE([AC_HEADER_TIME])
 
 dnl NEON_XML_PARSER may add things (e.g. -I/usr/local/include) to 
 dnl CPPFLAGS which make "gcc -Werror" fail in NEON_FORMAT; suggest
@@ -43,4 +42,8 @@ AC_CHECK_FUNCS(pipe isatty usleep shutdown setlocale gethostname)
 
 AC_REQUIRE([NE_FIND_AR])
 
+])
+
+AC_DEFUN([NEON_TEST_WITHOUT_CHILD], [
+AC_DEFINE([NEON_NO_TEST_CHILD], 1, [Define if test suite child process handling is not needed])
 ])
