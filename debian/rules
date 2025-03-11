@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-package=libneon27t64
+package=libneon27
 dev_package=libneon27
 upstream-version=$(shell head -n 1 debian/changelog | sed -e 's/.*(\(\([0-9]\+:\)\?\([^-]\+\).*\).*).*/\3/' )
 
